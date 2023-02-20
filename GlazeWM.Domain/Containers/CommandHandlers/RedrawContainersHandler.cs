@@ -35,7 +35,7 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
         .Where(
           (window) =>
             window is not MinimizedWindow &&
-            window.HasWindowStyle(WindowStyles.Maximize | WindowStyles.Minimize)
+            window.HasWindowStyle(WindowStyles.Maximize)
         )
         .ToList();
 
