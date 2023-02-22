@@ -64,6 +64,7 @@ namespace GlazeWM.Domain.UserConfigs
       }
 
       var chromiumBrowserProcessNames = new List<string> {
+        "chromium",
         "chrome",
         "msedge",
         "opera",
