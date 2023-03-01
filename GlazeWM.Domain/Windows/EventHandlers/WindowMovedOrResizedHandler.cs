@@ -12,6 +12,7 @@ using GlazeWM.Infrastructure.Common.Events;
 using GlazeWM.Infrastructure.WindowsApi;
 using Microsoft.Extensions.Logging;
 using System.Windows.Input;
+using GlazeWM.Domain.UserConfigs;
 
 namespace GlazeWM.Domain.Windows.EventHandlers
 {
@@ -22,6 +23,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
     private readonly MonitorService _monitorService;
     private readonly ContainerService _containerService;
     private readonly ILogger<WindowMovedOrResizedHandler> _logger;
+    private readonly UserConfigService _userConfigService;
     private readonly KeybindingService _keyBindingService;
 
     public WindowMovedOrResizedHandler(
@@ -29,13 +31,17 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       WindowService windowService,
       MonitorService monitorService,
       ILogger<WindowMovedOrResizedHandler> logger,
-      ContainerService containerService)
+      ContainerService containerService,
+      UserConfigService userConfigService,
+      KeybindingService keybindingService)
     {
       _bus = bus;
       _windowService = windowService;
       _monitorService = monitorService;
       _logger = logger;
       _containerService = containerService;
+      _userConfigService = userConfigService;
+      _keyBindingService = keybindingService;
     }
 
     public void Handle(WindowMovedOrResizedEvent @event)
@@ -60,16 +66,16 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
     private void UpdateTilingWindow(TilingWindow window)
     {
-      // Snap window to its original position even if it's not being resized.
-      var hasNoResizableSiblings = window.Parent is Workspace
-        && !window.SiblingsOfType<IResizable>().Any();
+      // // Snap window to its original position even if it's not being resized.
+      // var hasNoResizableSiblings = window.Parent is Workspace
+      //   && !window.SiblingsOfType<IResizable>().Any();
 
-      if (hasNoResizableSiblings)
-      {
-        _containerService.ContainersToRedraw.Add(window);
-        _bus.Invoke(new RedrawContainersCommand());
-        return;
-      }
+      // if (hasNoResizableSiblings)
+      // {
+      //   _containerService.ContainersToRedraw.Add(window);
+      //   _bus.Invoke(new RedrawContainersCommand());
+      //   return;
+      // }
 
       // Remove invisible borders from current placement to be able to compare window width/height.
       var currentPlacement = WindowService.GetPlacementOfHandle(window.Handle).NormalPosition;
@@ -83,6 +89,25 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
       var deltaWidth = adjustedPlacement.Width - window.Width;
       var deltaHeight = adjustedPlacement.Height - window.Height;
+      //NEW THING--------------------------------------------------------
+      // Check if window was only moved
+      // dont use deltaWidht/height to check, as sometimes windows are weird sizes
+      // x, y works better (just not when there is a pixel perfect move on one axis)
+      if (window.X != adjustedPlacement.X &&
+      window.Y != adjustedPlacement.Y &&
+      window.X + window.Width != adjustedPlacement.Right &&
+      window.Y + window.Height != adjustedPlacement.Bottom)
+      {
+        var cursorPos = new Point
+        {
+          X = WindowsApiService.GetCursorPosition().X,
+          Y = WindowsApiService.GetCursorPosition().Y
+        };
+        var fPos = window.FloatingPlacement;
+        window.FloatingPlacement = Rect.FromLTRB(cursorPos.X - (fPos.Width / 2), cursorPos.Y, cursorPos.X + (fPos.Width / 2), cursorPos.Y + fPos.Height);
+        _bus.Invoke(new SetFloatingCommand(window));
+        return;
+      }
 
       _bus.Invoke(new ResizeWindowCommand(window, ResizeDimension.Width, $"{deltaWidth}px"));
       _bus.Invoke(new ResizeWindowCommand(window, ResizeDimension.Height, $"{deltaHeight}px"));
@@ -105,15 +130,28 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       }
       return true;
     }
+    private Rect resize(Rect rect, double left, double top, double right, double bottom)
+    {
+      return Rect.FromLTRB(rect.Left + (int)left, rect.Top + (int)top, rect.Right + (int)right, rect.Bottom + (int)bottom);
+    }
+    private Rect resizeByMultiplying(Rect rect, double left, double top, double right, double bottom)
+    {
+
+      return Rect.FromLTRB((int)(rect.Left * left), (int)(rect.Top * top), (int)(rect.Right * right), (int)(rect.Bottom * bottom));
+    }
     private Container findTargetDescendant(Point cursorPos, FloatingWindow window, out int newIndex)
     {
       newIndex = 0;
       var workspace = WorkspaceService.GetWorkspaceFromChildContainer(window);
       var containers = workspace.SelfAndDescendants.Where(c => c is TilingWindow);
       Container bestCandidate = workspace;
+      var innerGap = _userConfigService.GapsConfig.InnerGap;
+      var outerGap = _userConfigService.GapsConfig.OuterGap;
+      int halfInnerGap = (int)(innerGap / 2) + 4;
+      int halfOuterGap = (int)(outerGap / 2) + 1;
       foreach (var c in containers)
       {
-        if (pointIsWithinRect(cursorPos, c.ToRect()))
+        if (pointIsWithinRect(cursorPos, resize(c.ToRect(), -halfInnerGap, -halfInnerGap, halfInnerGap, halfInnerGap)))
         {
           bestCandidate = c;
         }
@@ -121,11 +159,20 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
       //???????????????????
       //when placing in gap exepcion
-      if (bestCandidate == workspace)
-      {
-        return bestCandidate;
-      }
       var r = bestCandidate.ToRect();
+      r = resize(r, -halfInnerGap, -halfInnerGap, halfInnerGap, halfInnerGap);
+      if (bestCandidate is Workspace)
+      {
+        r = resize(r, -halfOuterGap, -halfOuterGap, halfOuterGap, halfOuterGap);
+      }
+
+
+      var critTop = resize(r, 0, 0, 0, -0.9 * r.Height);
+      var critBot = resize(r, 0, 0.9 * r.Height, 0, 0);
+      var critLeft = resize(r, 0, 0.1 * r.Height, -0.9 * r.Width, -0.1 * r.Height);
+      var critRight = resize(r, 0.9 * r.Width, -0.1 * r.Height, 0, -0.1 * r.Height);
+      // var critTop = resizeByMultiplying(r, 1, 1, 1, 0.1);
+      // var critBot=resizeByMultiplying(r,1,0.1,)
 
       var topZone = Rect.FromLTRB(r.X, r.Top, r.Right, (int)(r.Top + 0.33 * r.Height));
       var bottomZone = Rect.FromLTRB(r.X, (int)(r.Bottom - 0.33 * r.Height), r.Right, r.Bottom);
@@ -134,45 +181,97 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
       var containerToAdjust = bestCandidate;
 
+      if (bestCandidate is Workspace)
+      {
+        if (pointIsWithinRect(cursorPos, topZone))
+        {
+          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
+          newIndex = 0;
+        }
+
+        if (pointIsWithinRect(cursorPos, bottomZone))
+        {
+          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
+          newIndex = workspace.Children.Count;
+        }
+
+        if (pointIsWithinRect(cursorPos, leftZone))
+        {
+          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+          newIndex = 0;
+        }
+
+        if (pointIsWithinRect(cursorPos, rightZone))
+        {
+          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+          newIndex = workspace.Children.Count;
+        }
+        return bestCandidate.Children[0];
+
+      }
+
+      if (pointIsWithinRect(cursorPos, critTop))
+      {
+
+      }
+      if (pointIsWithinRect(cursorPos, critBot))
+      {
+
+      }
+      if (pointIsWithinRect(cursorPos, critLeft))
+      {
+        containerToAdjust = bestCandidate.Parent;
+        _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+        newIndex = bestCandidate.Parent.Index;
+        if (bestCandidate.Parent is Workspace)
+          return bestCandidate;
+        if (bestCandidate.Parent.Parent is Workspace)
+          return bestCandidate.Parent;
+        return bestCandidate.Parent.Parent;
+      }
+      if (pointIsWithinRect(cursorPos, critRight))
+      {
+        containerToAdjust = bestCandidate.Parent;
+        _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+        newIndex = bestCandidate.Parent.Index + 1;
+        if (bestCandidate.Parent is Workspace)
+          return bestCandidate;
+        if (bestCandidate.Parent.Parent is Workspace)
+          return bestCandidate.Parent;
+        return bestCandidate.Parent.Parent;
+      }
 
       if (pointIsWithinRect(cursorPos, topZone))
       {
         _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
+        newIndex = bestCandidate.Index;
       }
+
       if (pointIsWithinRect(cursorPos, bottomZone))
       {
         _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
         newIndex = bestCandidate.Index + 1;
       }
+
       if (pointIsWithinRect(cursorPos, leftZone))
       {
-        if (bestCandidate.Index >= 2)
-        {
-          newIndex = bestCandidate.Index;
-        }
-        // if (bestCandidate.Parent != workspace)
-        // {
-        //   containerToAdjust = bestCandidate.Parent;
-        // }
         _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+        newIndex = bestCandidate.Index;
       }
+
       if (pointIsWithinRect(cursorPos, rightZone))
       {
-        newIndex = bestCandidate.Index;
-        // if (bestCandidate.Parent != workspace)
-        // {
-        //   containerToAdjust = bestCandidate.Parent;
-        // }
         _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+        newIndex = bestCandidate.Index + 1;
       }
+
       return bestCandidate;
 
     }
 
     private void UpdateFloatingWindow(FloatingWindow window)
     {
-      if (WindowsApiService.GetKeyState(System.Windows.Forms.Keys.LMenu) == -127 ||
-      WindowsApiService.GetKeyState(System.Windows.Forms.Keys.LMenu) == -128)
+      if (WindowsApiService.GetKeyState(System.Windows.Forms.Keys.LMenu) is (-127) or (-128))
       {
         _logger.LogDebug("KKEYDOWN");
 
@@ -181,8 +280,6 @@ namespace GlazeWM.Domain.Windows.EventHandlers
           X = WindowsApiService.GetCursorPosition().X,
           Y = WindowsApiService.GetCursorPosition().Y
         };
-        int newIndex;
-        var targetDescendant = findTargetDescendant(cursorPos, window, out newIndex);
         // _bus.Invoke(new SetTilingCommand(window));
 
         //settiling---------------------------------------------------
@@ -200,22 +297,31 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
         // Replace the original window with the created tiling window.
         _bus.Invoke(new ReplaceContainerCommand(tilingWindow, window.Parent, window.Index));
+        int newIndex;
+        var targetDescendant = findTargetDescendant(cursorPos, window, out newIndex);
 
         // Insert the created tiling window after the last focused descendant of the workspace.
         if (insertionTarget is null)
           _bus.Invoke(new MoveContainerWithinTreeCommand(tilingWindow, workspace, 0, true));
         else
+          // _bus.Invoke(
+          //   new MoveContainerWithinTreeCommand(
+          //     tilingWindow,
+          //     insertionTarget.Parent,
+          //     insertionTarget.Index + 1,
+          //     true
+          //   )
           _bus.Invoke(
             new MoveContainerWithinTreeCommand(
               tilingWindow,
-              insertionTarget.Parent,
-              insertionTarget.Index + 1,
+              targetDescendant.Parent as SplitContainer,
+              newIndex,
               true
             )
           );
         //settiling---------------------------------------------------
 
-        _bus.Invoke(new MoveContainerWithinTreeCommand(tilingWindow, targetDescendant.Parent as SplitContainer, newIndex, true));
+        // _bus.Invoke(new MoveContainerWithinTreeCommand(tilingWindow, targetDescendant.Parent as SplitContainer, newIndex, true));
         _bus.Invoke(new RedrawContainersCommand());
 
 
