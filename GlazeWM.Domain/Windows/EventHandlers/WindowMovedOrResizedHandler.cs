@@ -63,55 +63,6 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       if (window is FloatingWindow)
         UpdateFloatingWindow(window as FloatingWindow);
     }
-
-    private void UpdateTilingWindow(TilingWindow window)
-    {
-      // // Snap window to its original position even if it's not being resized.
-      // var hasNoResizableSiblings = window.Parent is Workspace
-      //   && !window.SiblingsOfType<IResizable>().Any();
-
-      // if (hasNoResizableSiblings)
-      // {
-      //   _containerService.ContainersToRedraw.Add(window);
-      //   _bus.Invoke(new RedrawContainersCommand());
-      //   return;
-      // }
-
-      // Remove invisible borders from current placement to be able to compare window width/height.
-      var currentPlacement = WindowService.GetPlacementOfHandle(window.Handle).NormalPosition;
-      var adjustedPlacement = new Rect
-      {
-        Left = currentPlacement.Left + window.BorderDelta.Left,
-        Right = currentPlacement.Right - window.BorderDelta.Right,
-        Top = currentPlacement.Top + window.BorderDelta.Top,
-        Bottom = currentPlacement.Bottom - window.BorderDelta.Bottom,
-      };
-
-      var deltaWidth = adjustedPlacement.Width - window.Width;
-      var deltaHeight = adjustedPlacement.Height - window.Height;
-      //NEW THING--------------------------------------------------------
-      // Check if window was only moved
-      // dont use deltaWidht/height to check, as sometimes windows are weird sizes
-      // x, y works better (just not when there is a pixel perfect move on one axis)
-      if (window.X != adjustedPlacement.X &&
-      window.Y != adjustedPlacement.Y &&
-      window.X + window.Width != adjustedPlacement.Right &&
-      window.Y + window.Height != adjustedPlacement.Bottom)
-      {
-        var cursorPos = new Point
-        {
-          X = WindowsApiService.GetCursorPosition().X,
-          Y = WindowsApiService.GetCursorPosition().Y
-        };
-        var fPos = window.FloatingPlacement;
-        window.FloatingPlacement = Rect.FromLTRB(cursorPos.X - (fPos.Width / 2), cursorPos.Y, cursorPos.X + (fPos.Width / 2), cursorPos.Y + fPos.Height);
-        _bus.Invoke(new SetFloatingCommand(window));
-        return;
-      }
-
-      _bus.Invoke(new ResizeWindowCommand(window, ResizeDimension.Width, $"{deltaWidth}px"));
-      _bus.Invoke(new ResizeWindowCommand(window, ResizeDimension.Height, $"{deltaHeight}px"));
-    }
     private int findIndex(Point cursorPos)
     {
       int index = 0;
@@ -139,7 +90,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
       return Rect.FromLTRB((int)(rect.Left * left), (int)(rect.Top * top), (int)(rect.Right * right), (int)(rect.Bottom * bottom));
     }
-    private Container findTargetDescendant(Point cursorPos, FloatingWindow window, out int newIndex)
+    private Container findTargetDescendant(Point cursorPos, Container window, out int newIndex)
     {
       newIndex = 0;
       var workspace = WorkspaceService.GetWorkspaceFromChildContainer(window);
@@ -151,6 +102,10 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       int halfOuterGap = (int)(outerGap / 2) + 1;
       foreach (var c in containers)
       {
+        if (c.Id == window.Id)
+        {
+          continue;
+        }
         if (pointIsWithinRect(cursorPos, resize(c.ToRect(), -halfInnerGap, -halfInnerGap, halfInnerGap, halfInnerGap)))
         {
           bestCandidate = c;
@@ -221,7 +176,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       if (pointIsWithinRect(cursorPos, critLeft))
       {
         containerToAdjust = bestCandidate.Parent;
-        _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+        // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
         newIndex = bestCandidate.Parent.Index;
         if (bestCandidate.Parent is Workspace)
           return bestCandidate;
@@ -232,7 +187,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       if (pointIsWithinRect(cursorPos, critRight))
       {
         containerToAdjust = bestCandidate.Parent;
-        _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+        // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
         newIndex = bestCandidate.Parent.Index + 1;
         if (bestCandidate.Parent is Workspace)
           return bestCandidate;
@@ -267,6 +222,72 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
       return bestCandidate;
 
+    }
+
+    private void UpdateTilingWindow(TilingWindow window)
+    {
+      // // Snap window to its original position even if it's not being resized.
+      // var hasNoResizableSiblings = window.Parent is Workspace
+      //   && !window.SiblingsOfType<IResizable>().Any();
+
+      // if (hasNoResizableSiblings)
+      // {
+      //   _containerService.ContainersToRedraw.Add(window);
+      //   _bus.Invoke(new RedrawContainersCommand());
+      //   return;
+      // }
+
+      // Remove invisible borders from current placement to be able to compare window width/height.
+      var currentPlacement = WindowService.GetPlacementOfHandle(window.Handle).NormalPosition;
+      var adjustedPlacement = new Rect
+      {
+        Left = currentPlacement.Left + window.BorderDelta.Left,
+        Right = currentPlacement.Right - window.BorderDelta.Right,
+        Top = currentPlacement.Top + window.BorderDelta.Top,
+        Bottom = currentPlacement.Bottom - window.BorderDelta.Bottom,
+      };
+
+      var deltaWidth = adjustedPlacement.Width - window.Width;
+      var deltaHeight = adjustedPlacement.Height - window.Height;
+      //NEW THING--------------------------------------------------------
+      // Check if window was only moved
+      // dont use deltaWidht/height to check, as sometimes windows are weird sizes
+      // x, y works better (just not when there is a pixel perfect move on one axis)
+      if (window.X != adjustedPlacement.X &&
+      window.Y != adjustedPlacement.Y &&
+      window.X + window.Width != adjustedPlacement.Right &&
+      window.Y + window.Height != adjustedPlacement.Bottom)
+      {
+        var cursorPos = new Point
+        {
+          X = WindowsApiService.GetCursorPosition().X,
+          Y = WindowsApiService.GetCursorPosition().Y
+        };
+
+        if (WindowsApiService.GetKeyState(System.Windows.Forms.Keys.LMenu) > (-127))
+        {
+          var tilingWindow = window;
+          var targetDescendant = findTargetDescendant(cursorPos, window, out var newIndex);
+
+          _bus.Invoke(
+            new MoveContainerWithinTreeCommand(
+              tilingWindow,
+              targetDescendant.Parent as SplitContainer,
+              newIndex,
+              true
+            ));
+          _bus.Invoke(new RedrawContainersCommand());
+          return;
+        }
+
+        var fPos = window.FloatingPlacement;
+        window.FloatingPlacement = Rect.FromLTRB(cursorPos.X - (fPos.Width / 2), cursorPos.Y, cursorPos.X + (fPos.Width / 2), cursorPos.Y + fPos.Height);
+        _bus.Invoke(new SetFloatingCommand(window));
+        return;
+      }
+
+      _bus.Invoke(new ResizeWindowCommand(window, ResizeDimension.Width, $"{deltaWidth}px"));
+      _bus.Invoke(new ResizeWindowCommand(window, ResizeDimension.Height, $"{deltaHeight}px"));
     }
 
     private void UpdateFloatingWindow(FloatingWindow window)
