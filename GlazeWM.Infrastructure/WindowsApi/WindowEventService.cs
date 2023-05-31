@@ -32,6 +32,7 @@ namespace GlazeWM.Infrastructure.WindowsApi
       SetWinEventHook(EventConstant.LocationChange, EventConstant.NameChange, IntPtr.Zero, _hookProc, 0, 0, 0);
       SetWinEventHook(EventConstant.Cloaked, EventConstant.Uncloaked, IntPtr.Zero, _hookProc, 0, 0, 0);
       SetWinEventHook(EventConstant.Uncloaked, EventConstant.Uncloaked, IntPtr.Zero, _hookProc, 0, 0, 0);
+      SetWinEventHook(EventConstant.ExitMoveSize, EventConstant.ExitMoveSize, IntPtr.Zero, _hookProc, 0, 0, 0);
     }
 
     private void WindowEventHookProc(
@@ -49,6 +50,8 @@ namespace GlazeWM.Infrastructure.WindowsApi
 
       if (!isWindowEvent)
         return;
+      if (eventType == EventConstant.ExitMoveSize)
+        System.Diagnostics.Debugger.Break();
 
       Event eventToRaise = eventType switch
       {

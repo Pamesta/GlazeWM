@@ -15,6 +15,7 @@ namespace GlazeWM.Infrastructure.WindowsApi.Enums
     LocationChange = 0x800B,
     NameChange = 0x800C,
     Cloaked = 0x8017,
-    Uncloaked = 0x8018
+    Uncloaked = 0x8018,
+    ExitMoveSize = 0x0232
   }
 }

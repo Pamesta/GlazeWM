@@ -100,6 +100,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       var outerGap = _userConfigService.GapsConfig.OuterGap;
       int halfInnerGap = (int)(innerGap / 2) + 4;
       int halfOuterGap = (int)(outerGap / 2) + 1;
+
       foreach (var c in containers)
       {
         if (c.Id == window.Id)
