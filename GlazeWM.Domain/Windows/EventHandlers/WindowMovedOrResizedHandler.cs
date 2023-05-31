@@ -117,85 +117,83 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       //when placing in gap exepcion
       var r = bestCandidate.ToRect();
       r = resize(r, -halfInnerGap, -halfInnerGap, halfInnerGap, halfInnerGap);
-      if (bestCandidate is Workspace)
-      {
-        r = resize(r, -halfOuterGap, -halfOuterGap, halfOuterGap, halfOuterGap);
-      }
+      // if (bestCandidate is Workspace)
+      // {
+      //   r = resize(r, -halfOuterGap, -halfOuterGap, halfOuterGap, halfOuterGap);
+      // }
 
 
       var critTop = resize(r, 0, 0, 0, -0.9 * r.Height);
       var critBot = resize(r, 0, 0.9 * r.Height, 0, 0);
       var critLeft = resize(r, 0, 0.1 * r.Height, -0.9 * r.Width, -0.1 * r.Height);
       var critRight = resize(r, 0.9 * r.Width, -0.1 * r.Height, 0, -0.1 * r.Height);
-      // var critTop = resizeByMultiplying(r, 1, 1, 1, 0.1);
-      // var critBot=resizeByMultiplying(r,1,0.1,)
 
-      var topZone = Rect.FromLTRB(r.X, r.Top, r.Right, (int)(r.Top + 0.33 * r.Height));
-      var bottomZone = Rect.FromLTRB(r.X, (int)(r.Bottom - 0.33 * r.Height), r.Right, r.Bottom);
-      var leftZone = Rect.FromLTRB(r.Left, topZone.Bottom, (int)(r.Left + 0.5 * r.Width), bottomZone.Top);
-      var rightZone = Rect.FromLTRB((int)(r.Left + 0.5 * r.Width), topZone.Bottom, r.Right, bottomZone.Top);
+      var topZone = Rect.FromLTRB(r.X, r.Top, r.Right, (int)(r.Top + (0.33 * r.Height)));
+      var bottomZone = Rect.FromLTRB(r.X, (int)(r.Bottom - (0.33 * r.Height)), r.Right, r.Bottom);
+      var leftZone = Rect.FromLTRB(r.Left, topZone.Bottom, (int)(r.Left + (0.5 * r.Width)), bottomZone.Top);
+      var rightZone = Rect.FromLTRB((int)(r.Left + (0.5 * r.Width)), topZone.Bottom, r.Right, bottomZone.Top);
 
       var containerToAdjust = bestCandidate;
 
-      if (bestCandidate is Workspace)
-      {
-        if (pointIsWithinRect(cursorPos, topZone))
-        {
-          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
-          newIndex = 0;
-        }
+      // if (bestCandidate is Workspace)
+      // {
+      //   if (pointIsWithinRect(cursorPos, topZone))
+      //   {
+      //     // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
+      //     newIndex = 0;
+      //   }
 
-        if (pointIsWithinRect(cursorPos, bottomZone))
-        {
-          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
-          newIndex = workspace.Children.Count;
-        }
+      //   if (pointIsWithinRect(cursorPos, bottomZone))
+      //   {
+      //     // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Vertical));
+      //     newIndex = workspace.Children.Count;
+      //   }
 
-        if (pointIsWithinRect(cursorPos, leftZone))
-        {
-          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
-          newIndex = 0;
-        }
+      //   if (pointIsWithinRect(cursorPos, leftZone))
+      //   {
+      //     // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+      //     newIndex = 0;
+      //   }
 
-        if (pointIsWithinRect(cursorPos, rightZone))
-        {
-          // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
-          newIndex = workspace.Children.Count;
-        }
-        return bestCandidate.Children[0];
+      //   if (pointIsWithinRect(cursorPos, rightZone))
+      //   {
+      //     // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+      //     newIndex = workspace.Children.Count;
+      //   }
+      //   return bestCandidate.Children[0];
 
-      }
+      // }
 
-      if (pointIsWithinRect(cursorPos, critTop))
-      {
+      // if (pointIsWithinRect(cursorPos, critTop))
+      // {
 
-      }
-      if (pointIsWithinRect(cursorPos, critBot))
-      {
+      // }
+      // if (pointIsWithinRect(cursorPos, critBot))
+      // {
 
-      }
-      if (pointIsWithinRect(cursorPos, critLeft))
-      {
-        containerToAdjust = bestCandidate.Parent;
-        // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
-        newIndex = bestCandidate.Parent.Index;
-        if (bestCandidate.Parent is Workspace)
-          return bestCandidate;
-        if (bestCandidate.Parent.Parent is Workspace)
-          return bestCandidate.Parent;
-        return bestCandidate.Parent.Parent;
-      }
-      if (pointIsWithinRect(cursorPos, critRight))
-      {
-        containerToAdjust = bestCandidate.Parent;
-        // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
-        newIndex = bestCandidate.Parent.Index + 1;
-        if (bestCandidate.Parent is Workspace)
-          return bestCandidate;
-        if (bestCandidate.Parent.Parent is Workspace)
-          return bestCandidate.Parent;
-        return bestCandidate.Parent.Parent;
-      }
+      // }
+      // if (pointIsWithinRect(cursorPos, critLeft))
+      // {
+      //   containerToAdjust = bestCandidate.Parent;
+      //   // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+      //   newIndex = bestCandidate.Parent.Index;
+      //   if (bestCandidate.Parent is Workspace)
+      //     return bestCandidate;
+      //   if (bestCandidate.Parent.Parent is Workspace)
+      //     return bestCandidate.Parent;
+      //   return bestCandidate.Parent.Parent;
+      // }
+      // if (pointIsWithinRect(cursorPos, critRight))
+      // {
+      //   containerToAdjust = bestCandidate.Parent;
+      //   // _bus.Invoke(new ChangeContainerLayoutCommand(containerToAdjust, Layout.Horizontal));
+      //   newIndex = bestCandidate.Parent.Index + 1;
+      //   if (bestCandidate.Parent is Workspace)
+      //     return bestCandidate;
+      //   if (bestCandidate.Parent.Parent is Workspace)
+      //     return bestCandidate.Parent;
+      //   return bestCandidate.Parent.Parent;
+      // }
 
       if (pointIsWithinRect(cursorPos, topZone))
       {
@@ -222,7 +220,6 @@ namespace GlazeWM.Domain.Windows.EventHandlers
       }
 
       return bestCandidate;
-
     }
 
     private void UpdateTilingWindow(TilingWindow window)
@@ -273,7 +270,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
           _bus.Invoke(
             new MoveContainerWithinTreeCommand(
               tilingWindow,
-              targetDescendant.Parent as SplitContainer,
+              targetDescendant.Parent,
               newIndex,
               true
             ));

@@ -24,10 +24,13 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
       if (childToRemove is not IResizable)
         throw new Exception("Cannot resize a non-resizable container. This is a bug.");
 
+      // var isEmptySplitContainer =
+      //   parent is SplitContainer &&
+      //   parent.Children.Count == 1 &&
+      //   parent is not Workspace;
       var isEmptySplitContainer =
         parent is SplitContainer &&
-        parent.Children.Count == 1 &&
-        parent is not Workspace;
+        parent.Children.Count == 1;
 
       // Get the freed up space after container is detached.
       var availableSizePercentage = isEmptySplitContainer

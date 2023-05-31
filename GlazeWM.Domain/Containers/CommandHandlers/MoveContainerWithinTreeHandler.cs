@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using GlazeWM.Domain.Containers.Commands;
+using GlazeWM.Domain.Workspaces;
 using GlazeWM.Infrastructure.Bussing;
 using GlazeWM.Infrastructure.Utils;
 
@@ -21,6 +22,11 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
       var targetParent = command.TargetParent;
       var targetIndex = command.TargetIndex;
       var shouldAdjustSize = command.ShouldAdjustSize;
+
+      if (targetParent is SplitContainer && targetParent is not Workspace && targetParent.Children.Count == 1)
+      {
+        _bus.Invoke(new FlattenSplitContainerCommand(targetParent as SplitContainer));
+      }
 
       if (shouldAdjustSize && containerToMove is not IResizable)
         throw new Exception("Cannot resize a non-resizable container. This is a bug.");
