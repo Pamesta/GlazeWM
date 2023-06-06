@@ -45,11 +45,8 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
           shouldAdjustSize
         );
 
-<<<<<<< HEAD
-=======
         // Center cursor in focused window's new location
         _bus.InvokeAsync(new CenterCursorOnContainerCommand(containerToMove));
->>>>>>> master
 
         return CommandResponse.Ok;
       }

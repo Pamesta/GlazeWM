@@ -402,6 +402,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
         //settiling---------------------------------------------------
 
         MovingLogic(cursorPos, tilingWindow, insertionTargetContainer);
+        UpdateParentWorkspace(tilingWindow);
 
         _bus.Invoke(new RedrawContainersCommand());
         return;
