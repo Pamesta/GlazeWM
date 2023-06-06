@@ -28,8 +28,14 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
       parent.Children.Remove(childToRemove);
       parent.ChildFocusOrder.Remove(childToRemove);
 
-      var isEmptySplitContainer = parent is SplitContainer && !parent.HasChildren();
-      // && parent is not Workspace;
+      var isEmptySplitContainer = parent is SplitContainer && !parent.HasChildren()
+      && parent is not Workspace;
+
+      // if (parent.Children.Count == 1 && parent is SplitContainer && parent is not Workspace)
+      // {
+      //   _bus.Invoke(new FlattenSplitContainerCommand(parent as SplitContainer));
+      //   return CommandResponse.Ok;
+      // }
 
       // If the parent of the removed child is an empty split container, detach the split container
       // as well.

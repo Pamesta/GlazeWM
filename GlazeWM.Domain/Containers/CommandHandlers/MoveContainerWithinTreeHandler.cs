@@ -23,10 +23,6 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
       var targetIndex = command.TargetIndex;
       var shouldAdjustSize = command.ShouldAdjustSize;
 
-      if (targetParent is SplitContainer && targetParent is not Workspace && targetParent.Children.Count == 1)
-      {
-        _bus.Invoke(new FlattenSplitContainerCommand(targetParent as SplitContainer));
-      }
 
       if (shouldAdjustSize && containerToMove is not IResizable)
         throw new Exception("Cannot resize a non-resizable container. This is a bug.");
@@ -48,6 +44,7 @@ namespace GlazeWM.Domain.Containers.CommandHandlers
           targetIndex,
           shouldAdjustSize
         );
+
 
         return CommandResponse.Ok;
       }
