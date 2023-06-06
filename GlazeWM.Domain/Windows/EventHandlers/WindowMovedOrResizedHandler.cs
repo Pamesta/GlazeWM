@@ -302,7 +302,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
           if (insertionTargetContainer is Workspace)
           {
-            if (!(insertionTargetContainer as Workspace).HasChildren())
+            if ((insertionTargetContainer as Workspace).ChildrenOfType<TilingWindow>().Count() == 0)
             {
               _bus.Invoke(new MoveContainerWithinTreeCommand(window, insertionTargetContainer as Workspace, 0, true));
             }
@@ -313,6 +313,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
 
           MovingLogic(cursorPos, window, insertionTargetContainer);
 
+          //TODO: setFocus???????
           _containerService.ContainersToRedraw.Add(insertionTargetContainer.Parent);
           _bus.Invoke(new RedrawContainersCommand());
           return;
@@ -404,6 +405,7 @@ namespace GlazeWM.Domain.Windows.EventHandlers
         MovingLogic(cursorPos, tilingWindow, insertionTargetContainer);
         UpdateParentWorkspace(tilingWindow);
 
+        //TODO: setFocus???????
         _bus.Invoke(new RedrawContainersCommand());
         return;
       }
